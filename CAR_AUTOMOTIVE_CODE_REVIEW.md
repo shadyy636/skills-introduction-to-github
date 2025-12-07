@@ -83,13 +83,13 @@ private void button4_Click(object sender, EventArgs e)
 **Severity: HIGH**
 
 **Problem:** Multiple issues with the delete operation:
-1. The line length calculation `count += line.Length + 2` is incorrect because different line endings exist
+1. The line length calculation `count += line.Length + 2` is incorrect because different line endings exist (Windows uses \r\n (2 bytes), Unix uses \n (1 byte))
 2. Writing a single "*" doesn't effectively delete the record
 3. The search continues after finding and "deleting" the record
 
 **Current Code:**
 ```csharp
-count += line.Length + 2; // Assumes 2-byte line ending, but might be 1 or 2
+count += line.Length + 2; // Assumes 2-byte line ending, but Windows uses \r\n (2 bytes) and Unix uses \n (1 byte)
 ```
 
 **Recommendation:** Use a proper delete strategy - rewrite the entire file without the deleted record:
@@ -183,7 +183,7 @@ private void button2_Click(object sender, EventArgs e)
 
     // Reset to beginning before searching
     myfile.Seek(0, SeekOrigin.Begin);
-    sr.DiscardBufferedData(); // Clear StreamReader buffer
+    sr.DiscardBufferedData(); // Clear StreamReader buffer to ensure it reads from the new position
     
     string line;
     string[] field;
@@ -391,6 +391,7 @@ namespace WindowsFormsApp8
                     return;
 
                 filename = fd.FileName;
+                // Use OpenOrCreate to allow creating new files if they don't exist
                 myfile = new FileStream(filename, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                 sw = new StreamWriter(myfile);
                 sr = new StreamReader(myfile);
@@ -543,7 +544,9 @@ namespace WindowsFormsApp8
             while ((line = sr.ReadLine()) != null)
             {
                 string[] field = line.Split('|');
-                if (field.Length >= 1 && field[0] == textBox1.Text && !found)
+                // Check if record matches - we only need to match the first field (car brand/identifier)
+                // but validate that it has the expected format
+                if (field.Length >= 4 && field[0] == textBox1.Text && !found)
                 {
                     found = true; // Skip this record (delete it)
                     continue;
@@ -585,7 +588,7 @@ namespace WindowsFormsApp8
         private void button7_Click(object sender, EventArgs e)
         {
             // Navigate to Form2
-            // Close file streams before navigating
+            // Close file streams before navigating and set to null to prevent accidental reuse
             if (sr != null) { sr.Close(); sr = null; }
             if (sw != null) { sw.Close(); sw = null; }
             if (myfile != null) { myfile.Close(); myfile = null; }
@@ -662,6 +665,7 @@ namespace WindowsFormsApp8
                     return;
 
                 filename = fd.FileName;
+                // Use OpenOrCreate to allow creating new files if they don't exist
                 myfile = new FileStream(filename, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                 sw = new StreamWriter(myfile);
                 sr = new StreamReader(myfile);
@@ -805,7 +809,9 @@ namespace WindowsFormsApp8
             while ((line = sr.ReadLine()) != null)
             {
                 string[] field = line.Split('|');
-                if (field.Length >= 1 && field[0] == textBox1.Text && !found)
+                // Check if record matches - we only need to match the first field
+                // but validate that it has the expected format
+                if (field.Length >= 4 && field[0] == textBox1.Text && !found)
                 {
                     found = true; // Skip this record (delete it)
                     continue;
@@ -875,10 +881,18 @@ Give descriptive names to your buttons in the form designer:
 
 ### 3. **Add Labels to TextBoxes**
 Add labels near your textboxes to indicate what data should be entered:
+
+**For Form1 (Stock Management):**
 - textBox1 → Car Brand
 - textBox2 → Car Model
 - textBox3 → Car Year
-- textBox4 → Car Price (or Customer Name for Form2)
+- textBox4 → Car Price
+
+**For Form2 (Customer Requirements):**
+- textBox1 → Car Brand (Required)
+- textBox2 → Car Model
+- textBox3 → Customer Name
+- textBox4 → Additional Info
 
 ### 4. **Consider Using a DataGridView**
 Instead of using 4 textboxes, consider using a DataGridView to display all records at once. This provides better user experience.
